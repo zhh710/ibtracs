@@ -149,7 +149,7 @@ def status_color(status0):
         return clr
     else:
         return 'black'
-#
+# legend
 from matplotlib.path import Path
 import matplotlib.patches as patches
 def add_storm_legend(axes):
@@ -195,12 +195,28 @@ def add_storm_legend(axes):
             fontweight='bold',
         )
         i+=1
-
+#
 def text_transform(axes):
     '''
     '''
     geodetic_transform = ccrs.Geodetic()._as_mpl_transform(axes)
     return   offset_copy(geodetic_transform, units='dots', x=-10)
+# NEXRAD
+import cartopy.geodesic as cGeodesic
+def east_coast_radar_circle(ax=None,proj=None):
+	'''
+	NEXRAD neat east coast
+	'''
+	nexrad = pd.read_csv('NEXRAD_Location.csv')
+	lon = nexrad[' Longitude']
+	lat = nexrad[' Latitude']
+	geod = cGeodesic.Geodesic()
+	for lon0,lat0 in zip(lon[:],lat[:]):
+		long_lat = geod.circle(lon0,lat0,460*1000.,n_samples=180, endpoint=True)
+		ax.plot(lon0, lat0, marker='o', color='blue',transform=proj)
+		ax.fill(long_lat[:,0], long_lat[:,1],
+                    transform=proj,color='cornflowerblue', alpha=0.4)
+	
 # plot
 def plot_multistorm_onmap():
     '''
@@ -254,14 +270,14 @@ def plot_one_storm():
         lon0 = lon[idx0,0:nt0]
         lat0 = lat[idx0,0:nt0]
         status0 = status[idx0,:,:]
-        name0 = str_name(name[idx0,:])
+        name00 = str_name(name[idx0,:])
         time0_fs = time0[0].strftime(format='%Y%m%d%H%M%S')
-        png_name0 = name0 + "_" + time0_fs
+        png_name0 = name00 + "_" + time0_fs
         t0_str = time0[0].strftime(format='%Y-%m-%d %H:%M:%S')
         t1_str = time0[-1].strftime(format='%Y-%m-%d %H:%M:%S')
-        name0 = '{} {} - {}'.format(name0,t0_str,t1_str)
+        name0 = '{} {} - {}'.format(name00,t0_str,t1_str)
         #
-        if name0 != 'ZETA':
+        if name00 != 'ZETA':
             pass
         ax , _ = make_basemap_of_Atlantic(figure=fig)
         print("{} have {} points begining at {}".format(name0,nt0,time0[0]))
@@ -300,7 +316,10 @@ def plot_one_storm():
 
         print(it+1,"ploted")
         ax.set_title(name0,fontsize=20,fontweight='bold')
+        #legend
         add_storm_legend(ax)
+        # add radar location
+        east_coast_radar_circle(ax=ax,proj=ccrs.Geodetic())
         #
         plt.savefig(png_name0+'.png')
         plt.cla()
